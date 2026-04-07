@@ -2,7 +2,8 @@ import torch
 from torchvision import datasets,transforms
 import torch.optim as optim
 from  torch.utils.data import DataLoader
-
+import matplotlib.pyplot as plt
+import numpy as np
 transform = transforms.Compose([
     transforms.ToTensor(),
     transforms.Normalize((0.5,), (0.5,))
@@ -41,10 +42,10 @@ class SimpleMLP(nn.Module):
         x=self.fc3(x)
         return x
 
-
 device=torch.device("mps" if torch.backends.mps.is_available() else "cpu")
 model= SimpleMLP().to(device)
 print(device,"running...")
+print(model)
 
 criterion = nn.CrossEntropyLoss()
 optimizer = optim.Adam(model.parameters(),lr=0.001)  #lr=> Learning Rate
@@ -73,7 +74,6 @@ correct = 0
 total = 0
 
 model.eval()
-
 with torch.no_grad():
     for images,labels in test_loader:
         images,labels = images.to(device), labels.to(device)
@@ -86,6 +86,35 @@ with torch.no_grad():
 accuracy=100 * correct/total
 
 print(f"Model accuracy on 10,000 test images: %{accuracy:.2f}") # %96.42 accuracy
+torch.save(model.state_dict(),"mnist_mlp_model.pth")
+print("The model has been successfully saved")
 
-print(model)
+dataiter= iter(test_loader)
+images,labels = next(dataiter)
+
+sample_idx=0
+img= images[sample_idx]
+true_label = labels[sample_idx]
+img_input=img.unsqueeze(0).to(device)
+
+with torch.no_grad():
+    logits = model(img_input)
+    ps = F.softmax(logits,dim=1)
+
+ps = ps.cpu().data.numpy().squeeze()
+img_display = img.numpy().squeeze()
+
+fig, ( ax1 , ax2 ) = plt.subplots(figsize = (8,4), ncols=2 )
+
+ax1.imshow(img_display , cmap = 'gray')
+ax1.set_title(f'Gerçek Etiket:{true_label}')
+ax1.axis('off')
+
+ax2.barh(np.arange(10), ps , color='skyblue')
+ax2.set_yticks(np.arange(10))
+ax2.set_title("tahmin Olasılıkları")
+ax2.set_xlim(0,1.1)
+
+plt.tight_layout()
+plt.show()
         
